@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf }}">
+  <title>VietDub Studio · Video Translator</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+<aside class="sidebar">
+  <a class="brand" href="/"><span class="brand-icon">V<span>▸</span></span><span>VietDub<span class="brand-light"> Studio</span></span></a>
+  <div class="workspace-label">KHÔNG GIAN LÀM VIỆC</div>
+  <button class="nav active" data-tab="studio"><span>▣</span> Xưởng video</button>
+  <button class="nav" data-tab="storage"><span>▤</span> Dọn dẹp dữ liệu</button>
+  <div class="sidebar-divider"></div>
+  <div class="project-title">VIDEO CỦA BẠN <button id="new-project" title="Thêm video" aria-label="Thêm video">＋</button></div>
+  <div id="project-list"></div>
+  <div class="sidebar-foot"><span class="online-dot"></span> Chạy tại máy của bạn<small>Windows · Python · FFmpeg</small></div>
+</aside>
+<main>
+  <header class="topbar"><span id="breadcrumb">Không gian làm việc <b>/</b> Xưởng video</span><div class="local-badge"><span class="online-dot"></span> LOCAL STUDIO</div></header>
+  <section id="studio-tab">
+    <div class="page-heading"><div><div class="eyebrow">TỪ PHỤ ĐỀ ĐẾN GIỌNG NÓI</div><h1>Đưa câu chuyện đến gần hơn.</h1><p>Dịch, chỉnh lời và lồng tiếng Việt trong một không gian.</p></div><button class="primary" id="add-video">＋ Thêm video</button></div>
+    <section id="empty-state" class="empty-state"><div class="empty-icon">▷</div><h2>Bắt đầu với video của bạn</h2><p>Chọn MP4 trên máy hoặc kết nối project CLI đang làm.</p><button id="empty-add" class="primary">Chọn video đầu tiên</button><div class="empty-features"><span>01 · OCR bằng GPU</span><span>02 · Tự dịch & chỉnh sửa</span><span>03 · Lồng tiếng Việt</span></div></section>
+    <div id="workspace" hidden>
+      <div class="project-heading"><h2 id="project-name"></h2><span id="project-kind" class="pill"></span><span id="dirty-state"></span></div>
+      <div class="studio-grid">
+        <section class="panel preview-panel">
+          <div class="panel-head"><h3>Khung hình</h3><div class="segmented"><button class="selected" id="show-original">Video gốc</button><button id="show-slow">Video tua chậm</button><button id="show-final">Kết quả</button></div></div>
+          <div id="video-wrap" class="video-wrap"><video id="video" controls preload="metadata"></video><div id="video-empty" hidden>Video kết quả chưa được tạo.</div><div id="annotation-overlay" class="annotation-overlay" aria-hidden="true"><div id="annotation-region-box" class="annotation-region-box" hidden><span>Vùng OCR chú thích</span></div><div id="annotation-draw-hint" class="annotation-draw-hint" hidden>Kéo từ góc này đến góc đối diện của dòng chữ Trung</div></div></div>
+          <div class="preview-bottom"><span id="preview-caption">Video gốc</span><div class="preview-actions"><button id="save-final" class="text-link" type="button" hidden>Lưu video thành…</button><a id="download-video" class="text-link" hidden>Tải video ↗</a></div></div>
+          <section id="slow-review" class="slow-review" hidden aria-live="polite"><div><span class="slow-kicker">CHỜ DUYỆT VIDEO</span><strong id="slow-review-title">Xem video tua chậm trước khi tiếp tục</strong><p id="slow-review-message">OCR, phụ đề, giọng và xuất video sẽ dùng đúng timeline của bản này sau khi bạn xác nhận.</p></div><div class="button-group"><button id="use-original" type="button">Dùng video gốc</button><button id="approve-slow" class="primary" type="button">Đã xem — dùng video này</button></div></section>
+          <div class="flow"><div><b>01</b><span>Tua chậm video</span></div><span>→</span><div><b>02</b><span>Duyệt timeline</span></div><span>→</span><div><b>03</b><span>OCR & phụ đề</span></div><span>→</span><div><b>04</b><span>Giọng & xuất</span></div></div>
+        </section>
+        <section class="panel controls-panel">
+          <div class="panel-head"><h3>Thiết lập lồng tiếng</h3><span class="pill mint">EDGE TTS</span></div>
+          <section id="slow-card" class="slow-card"><div class="slow-card-head"><div><span class="slow-kicker">BƯỚC 0 · TÙY CHỌN</span><h4>Tua chậm video Trung</h4></div><span id="slow-state" class="slow-state">Video gốc</span></div><p id="slow-status" class="field-note">Tạo bản chậm để xem trước. Các bước sau chỉ dùng bản này khi bạn duyệt.</p><label class="range-label">Tốc độ video Trung <output id="slow-speed-label">0.80×</output><input type="range" id="slow_speed" min="0.5" max="0.95" step="0.05" value="0.8"></label><p class="field-note">0.80× làm video chậm khoảng 20%. Âm thanh Trung cũng chậm cùng timeline để phụ đề và giọng Việt khớp.</p><button id="create-slow" class="wide" type="button">Tạo video tua chậm để xem <span>▷</span></button><div id="slow-approved-actions" class="slow-approved-actions" hidden><span id="slow-approved-note">Bản chậm đã duyệt đang là video đầu vào.</span><button id="return-original" type="button">Dùng lại video gốc</button></div></section>
+          <label>Giọng Edge<select id="tts_voice" aria-describedby="edge-voice-note"></select></label>
+          <div class="tts-audition"><button id="preview-tts-voice" type="button">▷ Nghe thử giọng</button><audio id="tts-voice-preview" controls hidden></audio></div><p id="edge-voice-note" class="field-note">Edge hiện chỉ có một giọng nữ tiếng Việt là Hoài My. Các lựa chọn “cute/mềm” trước đây đã bỏ vì chỉ là chỉnh pitch nhẹ, không phải giọng mới. Nghe thử cần Internet.</p>
+          <details class="voice-advanced"><summary>Cao độ giọng Edge <span class="optional">nâng cao</span></summary><label class="range-label">Nâng / hạ tông <output id="tts-pitch-label">+0 Hz</output><input id="tts_pitch" type="range" min="-20" max="20" step="1" value="0"></label><p class="field-note">Với Hoài My, thử +4 đến +12 Hz trước; +15 Hz trở lên có thể nghe gắt hoặc mỏng. Chỉ chỉnh cao độ, không tạo người nói mới. Đổi mức này sẽ tạo lại WAV khi bạn chạy tạo giọng.</p></details>
+          <label class="range-label">Tốc độ giọng Việt <output id="speed-label">1.10×</output><input type="range" id="voice_speed" min="1" max="1.5" step="0.05" value="1.1"></label>
+          <p class="field-note">Chỉ tăng tốc lời Việt. Video và âm thanh gốc giữ nguyên.</p>
+          <div class="two-col"><label>Âm thanh gốc<input id="original_volume" type="number" min="0" max="2" step="0.05"></label><label>Giọng Việt<input id="voice_volume" type="number" min="0" max="3" step="0.05"></label></div>
+          <label class="check-row"><input id="burn" type="checkbox" checked><span>Chèn phụ đề Việt lên video<small>Giữ SRT hiển thị riêng với bản tạo giọng.</small></span></label>
+          <label class="check-row"><input id="blur_chinese_subtitles" type="checkbox"><span>Làm mờ phụ đề Trung gốc<small>Làm mờ dải đã chọn trên video gốc trước khi chèn phụ đề Việt.</small></span></label>
+          <label class="check-row"><input id="mirror_video" type="checkbox"><span>Lật ngang video kiểu gương<small>Phụ đề Việt được chèn sau cùng nên vẫn đọc bình thường.</small></span></label>
+          <section id="annotation-card" class="annotation-card" aria-live="polite">
+            <div class="annotation-card-head"><div><span class="annotation-kicker">CHÚ THÍCH TÙY CHỈNH</span><h4>Chú thích nằm trong khung hình</h4></div><span id="annotation-state" class="annotation-state">Chưa khoanh vùng</span></div>
+            <p id="annotation-status" class="field-note">Khoanh vị trí một lần, rồi có thể nhập SRT Việt do GPT tạo trực tiếp hoặc OCR/dịch chữ Trung. Track này không tạo giọng đọc.</p>
+            <!-- The rectangle is picked directly on the video.  Keep its normalized
+                 coordinates in hidden inputs so the shared project-settings code
+                 can load and save the selection without exposing duplicate fields. -->
+            <input id="annotation_left" type="hidden" value="0.20">
+            <input id="annotation_top" type="hidden" value="0.20">
+            <input id="annotation_right" type="hidden" value="0.80">
+            <input id="annotation_bottom" type="hidden" value="0.50">
+            <div class="button-group annotation-actions"><button id="draw-annotation" type="button">⌖ Khoanh vùng trên video</button><button id="clear-annotation" type="button">Bỏ vùng</button></div>
+            <label class="check-row annotation-enable"><input id="annotation_ocr_enabled" type="checkbox"><span>Dùng lớp chú thích Việt này khi xuất<small>Khoanh vùng để đặt chữ; có thể OCR/dịch hoặc nhập SRT Việt từ GPT. Không đưa vào TTS.</small></span></label>
+            <label class="range-label">Cỡ chữ chú thích <output id="annotation-font-size-label">28</output><input id="annotation_font_size" type="range" min="12" max="100" step="1" value="28"></label>
+            <label class="range-label">Độ cao chữ Việt <output id="annotation-display-y-label">12% từ trên</output><input id="annotation_display_y" type="range" min="0.05" max="0.80" step="0.01" value="0.12"></label>
+            <p class="field-note annotation-display-note">Càng nhỏ càng cao. Chỉ đổi chỗ chữ Việt khi xuất; vùng xanh vẫn là vùng OCR.</p>
+            <div class="button-group annotation-actions"><button id="annotation-ocr" type="button">① OCR Trung <span>tùy chọn</span></button><button id="annotation-ocr-enhanced" type="button" title="Dùng PP-OCRv5 Server cho chữ dọc hoặc cách điệu; chậm hơn OCR thường">② OCR tăng cường <span>chữ dọc/cách điệu</span></button><button id="annotation-translate" type="button">Dịch Gemini <span>tùy chọn</span></button><button id="copy-annotation-zh" type="button" hidden title="Chép SRT chú thích tiếng Trung vào bộ nhớ tạm">Chép SRT Trung</button><label id="import-annotation-label" class="button" title="Nhập SRT Việt do GPT hoặc người dùng tự tạo; không cần OCR Trung">Nhập SRT Việt từ GPT<input id="import-annotation-srt" type="file" accept=".srt,text/plain" hidden></label><button id="annotation-burn" type="button" title="Xuất video có chú thích Việt, giữ audio gốc">Chỉ chèn chú thích</button><a id="download-annotation-zh" class="button" hidden>Tải SRT Trung ↗</a><a id="download-annotation-srt" class="button" hidden>Tải SRT Việt ↗</a></div>
+            <p class="field-note">OCR tăng cường dùng PP-OCRv5 Server trên GPU khi đã chọn <code>gpu:0</code>; chậm hơn OCR thường và lần đầu sẽ tải model lớn hơn. Dùng khi chữ Trung có trên hình nhưng OCR thường bỏ sót, nhất là chữ dọc/cách điệu.</p>
+          </section>
+          <section id="logo-card" class="logo-card" aria-live="polite">
+            <div class="logo-card-head"><div><span class="logo-kicker">VIDEO KẾT QUẢ</span><h4>Chèn logo</h4></div><span id="logo-state" class="logo-state">Chưa có logo</span></div>
+            <label class="logo-upload">Chọn ảnh logo<input id="logo-upload" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"><small>PNG, JPG hoặc WebP. Ảnh được lưu riêng trong project này.</small></label>
+            <p id="logo-status" class="field-note">Chưa chọn logo. Logo chỉ xuất hiện khi tạo video cuối.</p>
+            <label class="check-row logo-enable"><input id="burn_logo" type="checkbox"><span>Chèn logo vào video cuối<small>Logo được ghép khi xuất video; không thay đổi video gốc, SRT hoặc audio.</small></span></label>
+            <div id="logo-options" class="logo-options">
+              <label>Vị trí<select id="logo_position"><option value="top-left">Góc trên trái</option><option value="top-right">Góc trên phải</option><option value="bottom-left">Góc dưới trái</option><option value="bottom-right">Góc dưới phải</option></select></label>
+              <div class="two-col logo-tuning"><label class="range-label">Độ rộng <output id="logo-width-label">12%</output><input id="logo_width_percent" type="range" min="2" max="50" step="1" value="12"></label><label class="range-label">Độ trong suốt <output id="logo-opacity-label">100%</output><input id="logo_opacity" type="range" min="0.05" max="1" step="0.05" value="1"></label></div>
+              <label class="range-label">Cách mép <output id="logo-margin-label">3%</output><input id="logo_margin_percent" type="range" min="0" max="20" step="1" value="3"></label>
+            </div>
+          </section>
+          <button id="export-video" class="primary wide">Tạo giọng & xuất video <span>↗</span></button>
+          <details><summary>Cài đặt OCR, vùng làm mờ & Gemini</summary><div class="two-col"><label>Thiết bị<select id="ocr_device"><option value="gpu:0">GPU · NVIDIA</option><option value="cpu">CPU</option></select></label><label>Frame / giây<input id="sample_fps" type="number" min="0.1" max="60" step="0.5"></label></div>
+          <div class="roi-fields"><label>Trái<input id="roi_left" type="number" min="0" max="1" step="0.01"></label><label>Trên<input id="roi_top" type="number" min="0" max="1" step="0.01"></label><label>Phải<input id="roi_right" type="number" min="0" max="1" step="0.01"></label><label>Dưới<input id="roi_bottom" type="number" min="0" max="1" step="0.01"></label></div>
+          <p class="field-note">Vùng OCR theo tỉ lệ 0–1 của khung hình. OCR dùng lại SRT Trung đã có.</p>
+          <label class="check-row"><input id="reocr" type="checkbox"><span>OCR lại từ video<small>Sao lưu SRT Trung cũ, giữ bản Việt hiện tại.</small></span></label>
+          <label>Độ mờ phụ đề Trung<input id="blur_strength" type="number" min="1" max="50" step="1"></label>
+          <div class="roi-fields"><label>Trái<input id="blur_left" type="number" min="0" max="1" step="0.01"></label><label>Trên<input id="blur_top" type="number" min="0" max="1" step="0.01"></label><label>Phải<input id="blur_right" type="number" min="0" max="1" step="0.01"></label><label>Dưới<input id="blur_bottom" type="number" min="0" max="1" step="0.01"></label></div>
+          <p class="field-note">Vùng làm mờ mặc định: 5–95% ngang, 80–96% dọc của video gốc. Nếu chữ Trung lệch vị trí, chỉnh bốn số này rồi xuất lại; khi lật gương, vùng mờ lật theo hình.</p>
+          <label>Model Gemini<input id="gemini_model" type="text"></label><label>API key <span class="optional">chỉ dùng cho tác vụ</span><input id="api-key" type="password" autocomplete="off" placeholder="Để trống nếu tự dịch"></label></details>
+        </section>
+      </div>
+      <section id="voice-card" class="panel voice-card">
+        <div class="panel-head"><div><div class="eyebrow">RVC + RMVPE · CUDA · TÙY CHỌN</div><h3>Đổi màu giọng bằng model RVC</h3><p class="field-note">Chỉ dùng khi bạn có model <code>.pth</code> phù hợp. Không cần model thì có thể bỏ qua phần này và dùng Edge TTS bình thường.</p></div><span id="voice-runtime" class="pill">Đang kiểm tra GPU</span></div>
+        <div class="voice-grid">
+          <div class="voice-section"><h4>1 · Nguồn giọng</h4><label>Nguồn audio<select id="voice_source_mode"><option value="project">Audio của video project đang mở</option><option value="upload">File WAV / MP3 / MP4 riêng</option></select></label><label id="voice-upload-label" class="voice-upload" hidden>Chọn file nguồn<input id="voice-upload" type="file" accept="audio/wav,audio/mpeg,video/mp4,.wav,.mp3,.mp4"><small>File được sao vào project trước khi chạy RVC.</small></label><p id="voice-source-status" class="field-note"></p></div>
+          <div class="voice-section"><h4>2 · Model và xử lý</h4><label>Model RVC .pth của bạn<select id="voice_model"><option value="">Chưa có model .pth</option></select></label><p id="voice-model-note" class="field-note">Chép model bạn có quyền sử dụng vào models\rvc. File .index cùng tên là tùy chọn.</p><div class="rvc-audition"><button id="preview-rvc-model" type="button">▷ Nghe mẫu model RVC</button><audio id="rvc-model-preview" controls hidden></audio></div><p id="rvc-model-preview-note" class="field-note">Mẫu dùng một câu tiếng Việt cố định, rồi chạy qua model .pth và RMVPE trên GPU.</p><div class="two-col voice-two-col"><label>Preset xử lý<select id="voice_preset"><option value="cute">Sáng, trẻ</option><option value="bright">Sáng rõ</option><option value="soft">Mềm</option></select></label><label>Speaker ID <span class="optional">nếu model nhiều giọng</span><input id="voice_speaker_id" type="number" min="0" max="109" step="1" placeholder="0"></label></div></div>
+          <div class="voice-section"><h4>3 · Giữ giọng tự nhiên</h4><label class="range-label">Dịch F0 trong RVC <output id="voice-pitch-label">+2 bán âm</output><input id="voice_pitch" type="range" min="-3" max="5" step="1" value="2"></label><p class="field-note">Đây là F0 do RMVPE đưa vào RVC, không phải tăng tốc hoặc tăng pitch thô sau khi tạo giọng.</p><details class="voice-advanced"><summary>Tinh chỉnh nâng cao</summary><label class="range-label">F0 hậu kỳ <span class="optional">Rubber Band, giữ formant</span><output id="voice-post-pitch-label">0.0 bán âm</output><input id="voice_post_pitch" type="range" min="-2" max="2" step="0.5" value="0"></label><p class="field-note">Để 0 là tốt nhất. Chỉ dùng khi FFmpeg có Rubber Band; formant được giữ để tránh giọng chipmunk.</p></details></div>
+        </div>
+        <div class="voice-footer"><div><button id="convert-voice" class="primary" type="button">Đổi giọng bằng GPU <span>✦</span></button><span id="voice-result-status" class="field-note"></span></div><div class="voice-result-actions"><audio id="voice-preview" controls hidden></audio><a id="download-voice-audio" class="text-link" hidden>Tải WAV ↗</a><a id="download-voice-video" class="text-link" hidden>Tải MP4 ↗</a></div></div>
+      </section>
+      <section class="panel subtitles-panel">
+        <div class="panel-head"><div><h3>Biên tập phụ đề <span id="cue-count" class="pill">0 câu</span></h3><p class="field-note">Sửa lời Việt ở bên phải. Mục để trống sẽ tự được bỏ qua khi lưu.</p></div><div class="button-group"><button id="ocr">① OCR</button><button id="translate">Dịch Gemini</button><button id="save-srt" class="primary">Lưu phụ đề</button></div></div>
+        <div id="source-gate" class="source-gate" hidden><strong id="source-gate-title">Đang chờ bạn duyệt video tua chậm.</strong><span id="source-gate-message">Hãy xem ở khung hình phía trên rồi chọn “Đã xem — dùng video này” trước khi OCR, sửa phụ đề hoặc tạo giọng.</span></div>
+        <div class="editor-toolbar"><input id="search" type="search" placeholder="Tìm trong lời Trung hoặc lời Việt…"><button id="reload-srt">↻ Tải lại</button><button id="copy-zh-srt" title="Chép SRT tiếng Trung vào bộ nhớ tạm" hidden>Chép SRT Trung</button><label class="button">Nhập SRT<input id="import-srt" type="file" accept=".srt" hidden></label><a id="download-srt" class="button" hidden>Tải SRT ↗</a><span id="editor-status"></span></div>
+        <div class="table-wrap"><table><thead><tr><th class="id-col">ID</th><th class="time-col">THỜI GIAN</th><th>TIẾNG TRUNG · THAM KHẢO</th><th>TIẾNG VIỆT · CÓ THỂ SỬA</th><th class="listen-col"></th></tr></thead><tbody id="subtitle-rows"></tbody></table><div id="no-subtitles" class="table-empty">Chạy OCR để lấy phụ đề, hoặc nhập bản SRT Việt đã dịch.</div></div>
+        <div class="editor-footer"><span id="page-label"></span><div class="button-group"><button id="prev-page">← Trước</button><button id="next-page">Sau →</button></div></div>
+      </section>
+      <section class="panel job-panel"><div class="panel-head"><div><h3>Tiến trình <span id="job-status" class="pill">Sẵn sàng</span></h3><p id="job-stage" class="field-note">Mỗi lần chạy một tác vụ để giữ dữ liệu nhất quán.</p></div><div class="button-group"><button data-action="prepare">Gộp câu cho TTS</button><button data-action="tts">Chỉ tạo giọng</button><button data-action="mix">Chỉ ghép video</button><button id="cancel-job" class="danger" disabled>Dừng</button></div></div><progress id="job-progress" max="100" value="0"></progress><pre id="job-log" aria-live="polite">Chưa có tác vụ. Bạn có thể bắt đầu bằng OCR hoặc nhập SRT.</pre></section>
+    </div>
+  </section>
+  <section id="storage-tab" hidden>
+    <div class="page-heading"><div><div class="eyebrow">GIỮ KHÔNG GIAN GỌN GÀNG</div><h1>Dọn dẹp dữ liệu.</h1><p>Xem trước dung lượng và từng file trước khi xóa.</p></div></div>
+    <section class="panel cleanup-panel"><div class="panel-head"><h3 id="cleanup-project">Chọn một project ở thanh bên</h3><span class="pill mint">BẢO VỆ SRT GỐC</span></div><p>Video đầu vào, phụ đề đang sửa, model OCR, API key và source code được giữ lại.</p>
+    <div class="cleanup-categories"><label class="cleanup-card"><input type="checkbox" name="cleanup" value="temp" checked><strong>File tạm</strong><small>Audio chuyển đổi, timeline và file ghép trung gian.</small></label><label class="cleanup-card"><input type="checkbox" name="cleanup" value="backups"><strong>Bản sao lưu SRT</strong><small>Các file .bak. Chỉ xóa khi không cần khôi phục.</small></label><label class="cleanup-card"><input type="checkbox" name="cleanup" value="audio"><strong>Giọng đã tạo</strong><small>WAV và manifest. Sẽ phải tạo giọng lại.</small></label><label class="cleanup-card"><input type="checkbox" name="cleanup" value="renders"><strong>Video kết quả</strong><small>Video đã xuất. Không xóa video đầu vào.</small></label><label class="cleanup-card"><input type="checkbox" name="cleanup" value="voice_conversion"><strong>Giọng RVC đã đổi</strong><small>WAV/MP4 đổi giọng và file tạm RVC. Giữ model nguồn.</small></label><label class="cleanup-card"><input type="checkbox" name="cleanup" value="translation_cache"><strong>Cache bản dịch</strong><small>Dịch lại qua Gemini có thể tốn thêm quota.</small></label></div>
+    <button id="preview-cleanup" class="primary">Kiểm tra dữ liệu có thể dọn</button><div id="cleanup-preview" hidden><div class="cleanup-summary"><strong id="cleanup-size"></strong><button id="execute-cleanup" class="danger">Xóa các file đã xem trước</button></div><ul id="cleanup-files"></ul></div></section>
+  </section>
+  <footer>VietDub Studio <span>Phụ đề chính xác. Giọng nói gần gũi.</span></footer>
+</main>
+<dialog id="project-dialog"><form id="project-form"><div class="dialog-heading"><div><div class="eyebrow">VIDEO MỚI</div><h2>Thêm vào xưởng của bạn</h2></div><button type="button" id="close-dialog" class="icon-button" aria-label="Đóng">×</button></div><p>Dùng đường dẫn để mở video lớn ngay, không cần sao chép.</p><label>Đường dẫn MP4 trên máy<input id="video-path" placeholder="C:\Users\…\video.mp4" type="text"></label><label class="check-row"><input id="legacy" type="checkbox"><span>Kết nối dữ liệu CLI đang có<small>Dùng output/, audio/ hiện tại. Chọn video đúng với bộ dữ liệu đó.</small></span></label><button type="submit" class="primary wide">Mở video từ đường dẫn</button><div class="or-divider">hoặc</div><label class="upload-area">↑ Chọn file MP4 để tải vào project<input id="upload-video" type="file" accept="video/mp4,.mp4"><small>Tối đa 8 GB · tạo thư mục riêng cho video</small></label><progress id="upload-progress" max="100" value="0" hidden></progress></form></dialog>
+<dialog id="confirm-dialog"><h2 id="confirm-title">Xác nhận</h2><p id="confirm-message"></p><div class="button-group"><button id="confirm-no">Hủy</button><button id="confirm-yes" class="primary">Tiếp tục</button></div></dialog>
+<div id="toast" role="status" hidden></div><audio id="audio-player"></audio>
+</body></html>

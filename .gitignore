@@ -1,0 +1,19 @@
+.venv/
+.env
+__pycache__/
+*.py[cod]
+input/*
+!input/.gitkeep
+output/*
+!output/.gitkeep
+audio/*
+!audio/.gitkeep
+temp/*
+!temp/.gitkeep
+.tools/
+# RVC voice models are local binary assets. Keep only folder instructions.
+models/rvc/*
+!models/rvc/README.txt
+# Local web project registry and generated per-video workspaces.
+web_data/
+projects/
